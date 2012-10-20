@@ -22,7 +22,7 @@ class DbModel(object):
     session = db_session
 
     def save(self):
-        self.session.save(self)
+        self.session.add(self)
 
     def delete(self):
         self.session.delete(self)

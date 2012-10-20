@@ -10,9 +10,20 @@ class User(Base, DbModel):
     email = Column(String(200))
     password = Column(String(50))
 
+    @property
+    def json_data(self):
+        return {'id': self.id, 'email': self.email}
+
     @classmethod
     def get_all_emails(cls):
         return [u.email for u in cls.query.all()]
+
+    @classmethod
+    def create(cls, email, password):
+        user = User(email=email, password=password)
+        user.save()
+        return user
+
 
 
 class Project(Base, DbModel):

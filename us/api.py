@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, request, g, url_for, abort
 from formencode import Invalid
 
+from us.database import db_session
+from us.models import User
 from us.validators import Registration
 
 
@@ -25,8 +27,10 @@ def validate(input_data, validator):
 def register():
     validator = Registration()
     data = validate(request.json, validator)
-    response = json_response(data, 201)
-    response.headers['Location'] = url_for("api.profile", user_id=12)
+    user = User.create(data['email'], data['password'])
+    db_session.commit()
+    response = json_response(user.json_data, 201)
+    response.headers['Location'] = url_for("api.profile", user_id=user.id)
     return response
 
 
