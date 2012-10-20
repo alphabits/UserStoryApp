@@ -6,7 +6,7 @@ from us.models import User
 
 class UniqueEmail(formencode.FancyValidator):
     
-    def _to_python(self, value, state):
+    def validate_python(self, value, state):
         if value in User.get_all_emails():
             raise formencode.Invalid(
                     'Email already exists',

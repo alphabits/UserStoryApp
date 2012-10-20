@@ -14,6 +14,9 @@ class User(Base, DbModel):
     def json_data(self):
         return {'id': self.id, 'email': self.email}
 
+    def get_projects(self):
+        return [m.project for m in self.memberships]
+
     @classmethod
     def get_all_emails(cls):
         return [u.email for u in cls.query.all()]
@@ -24,12 +27,20 @@ class User(Base, DbModel):
         user.save()
         return user
 
+    @classmethod
+    def get_by_id(cls, id):
+        return cls.query.filter(cls.id==id).first()
+
 
 
 class Project(Base, DbModel):
     __tablename__ = 'projects'
     id = Column(Integer, primary_key=True)
     name = Column(String(200))
+
+    @property
+    def json_data(self):
+        return {"id": self.id, "name": self.name}
 
 
 class Membership(Base, DbModel):
@@ -38,7 +49,8 @@ class Membership(Base, DbModel):
     project_id = Column(Integer, ForeignKey('projects.id'), primary_key=True)
     
     user = relationship('User', backref=backref('memberships', lazy='joined'))
-    project = relationship('Project', backref=backref('memberships', lazy='joined'))
+    project = relationship('Project', lazy='joined', 
+            backref=backref('memberships', lazy='joined'))
 
 
 class UserStoryList(Base, DbModel):
@@ -58,6 +70,11 @@ class UserStory(Base, DbModel):
 
     storylist_id = Column(Integer, ForeignKey('userstory_lists.id'))
     storylist = relationship(UserStoryList, backref='userstories')
+
+    @property
+    def json_data(self):
+        return {"id": self.id, "title": self.title, "points": self.points}
+
 
 
 class AcceptanceTest(Base, DbModel):
