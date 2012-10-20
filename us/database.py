@@ -2,12 +2,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-from us.config import DB_USER, DB_PASS, DB_HOST, DB_NAME
+from us.config import DB_CONNECTION_STRING
 
 
-connection_string = 'mysql+mysqldb://{0}:{1}@{2}/{3}'.format(
-        DB_USER, DB_PASS, DB_HOST, DB_NAME)
-engine = create_engine(connection_string, convert_unicode=True)
+engine = create_engine(DB_CONNECTION_STRING, convert_unicode=True)
 db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False,
         bind=engine))
 
@@ -23,6 +21,10 @@ class DbModel(object):
 
     def save(self):
         self.session.add(self)
+
+    def save_and_commit(self):
+        self.save()
+        self.session.commit()
 
     def delete(self):
         self.session.delete(self)

@@ -1,9 +1,10 @@
 from flask import Blueprint, request, g, url_for, abort
 from formencode import Invalid
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, Unauthorized
+from werkzeug.security import check_password_hash
 
 from us.database import db_session
-from us.models import Project, User
+from us.models import Project, User, Session, UserStoryList, UserStory
 from us.utils import json_response
 from us.validators import Registration
 
@@ -36,6 +37,19 @@ def register():
     response.headers['Location'] = url_for("api.profile", user_id=user.id)
     return response
 
+@api.route("/login", methods=['POST'])
+def login():
+    data = request.json
+    user = User.get_by_email(data['email'])
+    if (user is None):
+        abort(400)
+    if (not check_password_hash(user.password, data['password'])):
+        abort(400)
+    session = Session(user=user)
+    db_session.commit()
+    response = json_response(session.json_data, 201)
+    response.headers['Location'] = url_for("api.profile", user_id=user.id)
+    return response
 
 @api.route("/profile/<int:user_id>")
 def profile(user_id):
@@ -43,20 +57,40 @@ def profile(user_id):
     return json_response(user.json_data)
 
 
-@api.route("/profile/<int:user_id>/projects")
+@api.route("/profile/<int:user_id>/projects", methods=['GET'])
 def user_projects(user_id):
     user = get_or_abort(User, user_id)
     projects = user.get_projects()
     data = {"projects": [p.json_data for p in projects]}
     return json_response(data)
 
+@api.route("/projects", methods=['POST'])
+def create_project():
+    p = Project.create(request.json['name'], g.user)
+    response = json_response(p.json_data, 201)
+    response.headers.set('Location', url_for("api.project", project_id=p.id))
+    return response
+
 @api.route("/projects/<int:project_id>")
-def projects(project_id):
+def project(project_id):
     project = get_or_abort(Project, project_id)
+    if (not g.user.can_access(project)):
+        raise Unauthorized()
     return json_response(project.json_data)
 
-@api.route("/projects/<int:project_id>/userstories")
-def project_userstories(project_id):
+@api.route("/projects/<int:project_id>/lists/<int:list_id>/stories", methods=['POST'])
+def create_story(project_id, list_id):
     project = get_or_abort(Project, project_id)
-    data = {"stories": [us.json_data for us in project.userstories]}
-    return json_response(data)
+    if (not g.user.can_access(project)):
+        raise Unauthorized()
+    list = get_or_abort(UserStoryList, list_id)
+    data = request.json
+    story = UserStory.create(data['title'], data['points'], list)
+    response = json_response(story.json_data, 201)
+    response.headers.set('Location', url_for('api.story', project_id=project_id, 
+            list_id=list_id, story_id=story.id))
+    return response
+
+@api.route("/projects/<int:project_id>/lists/<int:list_id>/stories/<int:story_id>")
+def story(project_id, list_id, story_id):
+    return "Hallo"
